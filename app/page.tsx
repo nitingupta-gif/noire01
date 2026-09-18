@@ -1,7 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import { connection } from "next/server";
 
 export default async function Home() {
+  await connection();
+
   const products = await prisma.product.findMany({
     where: { published: true },
     include: { images: true },
