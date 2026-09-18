@@ -3,11 +3,6 @@ import Razorpay from "razorpay";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-});
-
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user) {
@@ -30,6 +25,22 @@ export async function POST(req: NextRequest) {
   if (order.paymentStatus === "PAID") {
     return NextResponse.json({ error: "Order already paid" }, { status: 400 });
   }
+
+  const keyId = process.env.RAZORPAY_KEY_ID;
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+  if (!keyId || !keySecret) {
+    console.error("Razorpay credentials are not configured");
+    return NextResponse.json(
+      { error: "Online payment is temporarily unavailable" },
+      { status: 503 },
+    );
+  }
+
+  const razorpay = new Razorpay({
+    key_id: keyId,
+    key_secret: keySecret,
+  });
 
   const razorpayOrder = await razorpay.orders.create({
     amount: order.total,
@@ -54,6 +65,6 @@ export async function POST(req: NextRequest) {
     razorpayOrderId: razorpayOrder.id,
     amount: razorpayOrder.amount,
     currency: razorpayOrder.currency,
-    keyId: process.env.RAZORPAY_KEY_ID,
+    keyId,
   });
 }
