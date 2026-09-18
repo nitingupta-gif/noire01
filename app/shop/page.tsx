@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import Link from "next/link";
 
 const CATEGORIES = ["T-Shirts", "Shirts", "Jeans", "Trousers", "Dresses", "Jackets", "Hoodies", "Sweatshirts", "Co-ords", "Shoes", "Accessories", "Bags", "Watches", "Caps", "Sunglasses"];
-const GENDERS = ["MEN", "WOMEN", "KIDS", "UNISEX"];
+const GENDERS = ["MEN", "WOMEN", "KIDS", "UNISEX"] as const;
 
 export default async function Shop({
   searchParams,
@@ -11,15 +12,15 @@ export default async function Shop({
 }) {
   const params = await searchParams;
 
-  const where: any = { published: true };
-  if (params.category) {
-    where.category = { name: params.category };
-  }
-  if (params.gender) {
-    where.gender = params.gender;
-  }
+  const where: Prisma.ProductWhereInput = {
+    published: true,
+    ...(params.category ? { category: { name: params.category } } : {}),
+    ...(params.gender && GENDERS.includes(params.gender as (typeof GENDERS)[number])
+      ? { gender: params.gender as (typeof GENDERS)[number] }
+      : {}),
+  };
 
-  let orderBy: any = { createdAt: "desc" };
+  let orderBy: Prisma.ProductOrderByWithRelationInput = { createdAt: "desc" };
   if (params.sort === "price-asc") orderBy = { price: "asc" };
   if (params.sort === "price-desc") orderBy = { price: "desc" };
   if (params.sort === "rating") orderBy = { ratingAvg: "desc" };

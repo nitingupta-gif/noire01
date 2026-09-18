@@ -7,7 +7,7 @@ export default async function CheckoutPage() {
   const session = await auth();
   if (!session?.user) redirect("/account/login?callbackUrl=/checkout");
 
-  const userId = (session.user as any).id;
+  const userId = session.user.id;
 
   const cart = await prisma.cart.findUnique({
     where: { userId },

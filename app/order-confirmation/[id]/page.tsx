@@ -13,7 +13,7 @@ export default async function OrderConfirmation({ params }: { params: Promise<{ 
     include: { items: { include: { product: true } }, address: true },
   });
 
-  if (!order || order.userId !== (session.user as any).id) {
+  if (!order || order.userId !== session.user.id) {
     notFound();
   }
 

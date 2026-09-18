@@ -50,8 +50,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // Role and user id travel in the JWT so they're available in middleware and server actions.
     async jwt({ token, user }) {
       if (user) {
-        token.role = (user as any).role ?? token.role;
-        token.id = (user as any).id ?? token.sub;
+        token.role = user.role ?? token.role;
+        token.id = user.id ?? token.sub;
       }
 
       if (!token.id && token.sub) {
@@ -62,8 +62,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as any).id = token.sub ?? (token as any).id;
-        (session.user as any).role = token.role;
+        session.user.id = token.sub ?? token.id ?? session.user.id;
+        session.user.role = token.role ?? session.user.role;
       }
       return session;
     },

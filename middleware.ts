@@ -14,7 +14,7 @@ const AUTH_ROUTES = ["/account/login", "/account/signup"];
 export default auth((req) => {
   const { pathname } = req.nextUrl;
   const isLoggedIn = !!req.auth;
-  const role = (req.auth?.user as any)?.role;
+  const role = req.auth?.user?.role;
 
   if (pathname.startsWith("/admin")) {
     if (!isLoggedIn || role !== "ADMIN") {

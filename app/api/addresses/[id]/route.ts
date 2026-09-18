@@ -18,7 +18,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id } = await params;
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const userId = (session.user as any).id;
+  const userId = session.user.id;
 
   const existing = await prisma.address.findFirst({ where: { id, userId } });
   if (!existing) return NextResponse.json({ error: "Address not found" }, { status: 404 });
@@ -40,7 +40,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const { id } = await params;
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const userId = (session.user as any).id;
+  const userId = session.user.id;
 
   const existing = await prisma.address.findFirst({ where: { id, userId } });
   if (!existing) return NextResponse.json({ error: "Address not found" }, { status: 404 });

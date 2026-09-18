@@ -3,36 +3,94 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+type CheckoutAddress = {
+  id: string;
+  fullName: string;
+  mobile: string;
+  house: string;
+  street: string;
+  city: string;
+  state: string;
+  pincode: string;
+};
+
+type CheckoutForm = {
+  fullName: string;
+  mobile: string;
+  house: string;
+  street: string;
+  city: string;
+  state: string;
+  pincode: string;
+};
+
+type CheckoutProps = {
+  items: unknown[];
+  addresses: CheckoutAddress[];
+  subtotal: number;
+  shipping: number;
+  tax: number;
+  total: number;
+};
+
+type JsonResponse = {
+  error?: string;
+  id?: string;
+  orderId?: string;
+  keyId?: string;
+  amount?: number;
+  currency?: string;
+  razorpayOrderId?: string;
+};
+
+type RazorpayResponse = {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+};
+
+type RazorpayOptions = {
+  key: string;
+  amount: number;
+  currency: string;
+  order_id: string;
+  name: string;
+  description: string;
+  handler: (response: RazorpayResponse) => Promise<void> | void;
+  modal: { ondismiss: () => void };
+  theme: { color: string };
+};
+
 declare global {
   interface Window {
-    Razorpay: any;
+    Razorpay: new (options: RazorpayOptions) => { open: () => void };
   }
 }
 
-export function CheckoutClient({ items, addresses, subtotal, shipping, tax, total }: any) {
+export function CheckoutClient({ items, addresses, subtotal, shipping, tax, total }: CheckoutProps) {
   const router = useRouter();
-  const [selectedAddr, setSelectedAddr] = useState(addresses[0]?.id ?? null);
+  const [selectedAddr, setSelectedAddr] = useState<string | null>(addresses[0]?.id ?? null);
   const [addingNew, setAddingNew] = useState(addresses.length === 0);
-  const [form, setForm] = useState({ fullName: "", mobile: "", house: "", street: "", city: "", state: "", pincode: "" });
+  const [form, setForm] = useState<CheckoutForm>({ fullName: "", mobile: "", house: "", street: "", city: "", state: "", pincode: "" });
   const [payment, setPayment] = useState("COD");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const money = (n: number) => "₹" + (n / 100).toLocaleString("en-IN");
 
-  const parseJsonResponse = async (res: Response) => {
+  const parseJsonResponse = async (res: Response): Promise<JsonResponse> => {
     const text = await res.text();
     if (!text) return {};
 
     try {
-      return JSON.parse(text);
+      return JSON.parse(text) as JsonResponse;
     } catch {
       return { error: "Something went wrong while placing the order. Please try again." };
     }
   };
 
   const loadRazorpayScript = () =>
-    new Promise((resolve) => {
+    new Promise<boolean>((resolve) => {
       const script = document.createElement("script");
       script.src = "https://checkout.razorpay.com/v1/checkout.js";
       script.onload = () => resolve(true);
@@ -54,11 +112,11 @@ export function CheckoutClient({ items, addresses, subtotal, shipping, tax, tota
       });
       const data = await parseJsonResponse(res);
       if (!res.ok) {
-        setError((data as any).error || "Please check your address details");
+        setError(data.error || "Please check your address details");
         setLoading(false);
         return;
       }
-      addressId = (data as any).id;
+      addressId = data.id ?? null;
     }
 
     if (!addressId) {
@@ -74,13 +132,13 @@ export function CheckoutClient({ items, addresses, subtotal, shipping, tax, tota
     });
     const orderData = await parseJsonResponse(orderRes);
     if (!orderRes.ok) {
-      setError((orderData as any).error || "Could not place order");
+      setError(orderData.error || "Could not place order");
       setLoading(false);
       return;
     }
 
     if (payment === "COD") {
-      router.push(`/order-confirmation/${(orderData as any).orderId}`);
+      router.push(`/order-confirmation/${orderData.orderId ?? ""}`);
       return;
     }
 
@@ -95,30 +153,30 @@ export function CheckoutClient({ items, addresses, subtotal, shipping, tax, tota
     const rpRes = await fetch("/api/razorpay/create-order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderId: (orderData as any).orderId }),
+      body: JSON.stringify({ orderId: orderData.orderId }),
     });
     const rpData = await parseJsonResponse(rpRes);
     if (!rpRes.ok) {
-      setError((rpData as any).error || "Could not initiate payment");
+      setError(rpData.error || "Could not initiate payment");
       setLoading(false);
       return;
     }
 
     const rzp = new window.Razorpay({
-      key: rpData.keyId,
-      amount: rpData.amount,
-      currency: rpData.currency,
-      order_id: rpData.razorpayOrderId,
+      key: rpData.keyId ?? "",
+      amount: rpData.amount ?? 0,
+      currency: rpData.currency ?? "INR",
+      order_id: rpData.razorpayOrderId ?? "",
       name: "NOIRÉ",
       description: "Order payment",
-      handler: async (response: any) => {
+      handler: async (response: RazorpayResponse) => {
         const verifyRes = await fetch("/api/razorpay/verify", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(response),
         });
         if (verifyRes.ok) {
-          router.push(`/order-confirmation/${(orderData as any).orderId}`);
+          router.push(`/order-confirmation/${orderData.orderId ?? ""}`);
         } else {
           setError("Payment verification failed. Contact support.");
         }
@@ -140,7 +198,7 @@ export function CheckoutClient({ items, addresses, subtotal, shipping, tax, tota
         <span className="text-sm" style={{ color: "#211A2E" }}>Delivery Address</span>
         {addresses.length > 0 && !addingNew && (
           <div className="flex flex-col gap-2 mt-3">
-            {addresses.map((a: any) => (
+            {addresses.map((a: CheckoutAddress) => (
               <label key={a.id} className="p-3 flex gap-2 cursor-pointer text-sm" style={{ border: `1px solid ${selectedAddr === a.id ? "#FF3D68" : "#EDE0D0"}` }}>
                 <input type="radio" checked={selectedAddr === a.id} onChange={() => setSelectedAddr(a.id)} />
                 <span style={{ color: "#211A2E" }}>
@@ -157,11 +215,19 @@ export function CheckoutClient({ items, addresses, subtotal, shipping, tax, tota
 
         {addingNew && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-            {[["fullName", "Full Name"], ["mobile", "Mobile Number"], ["house", "House / Flat"], ["street", "Street / Area"], ["city", "City"], ["state", "State"], ["pincode", "Pincode"]].map(([k, label]) => (
+            {([
+              ["fullName", "Full Name"],
+              ["mobile", "Mobile Number"],
+              ["house", "House / Flat"],
+              ["street", "Street / Area"],
+              ["city", "City"],
+              ["state", "State"],
+              ["pincode", "Pincode"],
+            ] as Array<[keyof CheckoutForm, string]>).map(([k, label]) => (
               <input
                 key={k}
                 placeholder={label}
-                value={(form as any)[k]}
+                value={form[k]}
                 onChange={(e) => setForm((f) => ({ ...f, [k]: e.target.value }))}
                 className="px-3 py-2.5 text-sm"
                 style={{ border: "1px solid #EDE0D0" }}

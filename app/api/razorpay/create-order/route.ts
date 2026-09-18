@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     include: { items: true },
   });
 
-  if (!order || order.userId !== (session.user as any).id) {
+  if (!order || order.userId !== session.user.id) {
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
   if (order.paymentMethod !== "RAZORPAY") {

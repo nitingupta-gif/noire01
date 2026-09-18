@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     include: { order: true },
   });
 
-  if (!payment || payment.order.userId !== (session.user as any).id) {
+  if (!payment || payment.order.userId !== session.user.id) {
     return NextResponse.json({ error: "Payment record not found" }, { status: 404 });
   }
 

@@ -8,7 +8,7 @@ export default async function CartPage() {
   if (!session?.user) redirect("/account/login");
 
   const cart = await prisma.cart.findUnique({
-    where: { userId: (session.user as any).id },
+    where: { userId: session.user.id },
     include: { items: { include: { product: { include: { images: true } }, variant: true } } },
   });
 
